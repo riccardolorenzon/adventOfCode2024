@@ -1,15 +1,25 @@
 XMAS = "XMAS"
 SAMX = "SAMX"
 
+directions_diags = {
+    "up_right": lambda i, j: (i - 1, j + 1),
+    "right_down": lambda i, j: (i + 1, j + 1),
+    "down_left": lambda i, j: (i + 1, j - 1),
+    "up_left": lambda i, j: (i - 1, j - 1),
+}
+
+opposite_diags = {
+    "up_right": "down_left",
+    "right_down": "up_left",
+    "down_left": "up_right",
+    "up_left": "right_down",
+}
+
 directions = {
     "up": lambda i, j: (i - 1, j),
-    "uo_right": lambda i, j: (i - 1, j + 1),
     "right": lambda i, j: (i, j + 1),
-    "right_down": lambda i, j: (i + 1, j + 1),
     "down": lambda i, j: (i + 1, j),
-    "down_left": lambda i, j: (i + 1, j - 1),
     "left": lambda i, j: (i, j - 1),
-    "up_left": lambda i, j: (i - 1, j - 1),
 }
 
 
@@ -32,17 +42,48 @@ def part_1(matrix):
     for i in range(len(matrix)):
         for j in range(len(matrix[i])):
             if matrix[i][j] == "X":
-                print(f"checking for coordinates {i, j}\n")
-                for _, direction in directions.items():
+                for _, direction in {**directions, **directions_diags}.items():
                     if check_line(matrix, direction(i, j), "MAS", direction):
                         occurences += 1
-                print("\n")
 
-    print(f"Total number of occurences is {occurences}")
+    print(f"Total number of occurences part 1 is {occurences}")
 
 
-def part_2():
-    pass
+def part_2(matrix):
+    # the idea is to intercept every 'A' and check if MS os SM is on each diag
+    occurences = 0
+    for i in range(len(matrix)):
+        for j in range(len(matrix[i])):
+            if matrix[i][j] == "A":
+                if (
+                    check_line(
+                        matrix,
+                        directions_diags["up_right"](i, j),
+                        "MAS",
+                        directions_diags[opposite_diags["up_right"]],
+                    )
+                    or check_line(
+                        matrix,
+                        directions_diags["up_right"](i, j),
+                        "SAM",
+                        directions_diags[opposite_diags["up_right"]],
+                    )
+                ) and (
+                    check_line(
+                        matrix,
+                        directions_diags["right_down"](i, j),
+                        "MAS",
+                        directions_diags[opposite_diags["right_down"]],
+                    )
+                    or check_line(
+                        matrix,
+                        directions_diags["right_down"](i, j),
+                        "SAM",
+                        directions_diags[opposite_diags["right_down"]],
+                    )
+                ):
+                    occurences += 1
+    print(f"Total number of occurences part 2 is {occurences}")
 
 
 def load_matrix():
@@ -56,3 +97,4 @@ def load_matrix():
 if __name__ == "__main__":
     matrix = load_matrix()
     part_1(matrix)
+    part_2(matrix)
