@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
 import sys
@@ -9,6 +10,25 @@ class Direction(Enum):
     SOUTH = "v"
     EST = ">"
     WEST = "<"
+
+
+@dataclass
+class Block:
+    i: int = None
+    j: int = None
+
+
+@dataclass
+class VisitedCell:
+    guard_directions: List[Direction]
+
+    def __repr__(self):
+        if self.guard_directions:
+            return "".join(
+                [direction.value for direction in self.guard_directions]
+            ).ljust(4, "*")
+        else:
+            return "."
 
 
 @dataclass
@@ -60,11 +80,43 @@ class Guard:
                 self.direction = Direction.NORTH
 
 
+class InfiniteLoop(BaseException):
+    pass
+
+
+def part_2(lab_map: List[List[str]], guard: Guard) -> int:
+    blocks = 0
+    for x, line in enumerate(lab_map):
+        for y, cell in enumerate(line):
+            original_map = deepcopy(lab_map)
+            original_guard = deepcopy(guard)
+            if cell == "X":
+                original_map[x][y] = "O"
+                try:
+                    part_1(original_map, original_guard)
+                except InfiniteLoop as e:
+                    blocks += 1
+    print(f"The total number of way to block the guard is {blocks}")
+    return blocks
+
+
 def part_1(lab_map: List[List[str]], guard: Guard) -> int:
     steps = 0
+    visited_spots = [
+        [None for _ in range(len(lab_map[0]))] for _ in range(len(lab_map))
+    ]
     try:
         while True:
-            if lab_map[guard.i][guard.j] == "#":
+            if visited_spots[guard.i][guard.j] is None:
+                visited_spots[guard.i][guard.j] = VisitedCell([guard.direction])
+            else:
+                if guard.direction in visited_spots[guard.i][guard.j].guard_directions:
+                    raise InfiniteLoop
+                else:
+                    visited_spots[guard.i][guard.j].guard_directions.append(
+                        guard.direction
+                    )
+            if lab_map[guard.i][guard.j] in ["#", "O"]:
                 guard.previous()
                 guard.turn()
             else:
@@ -74,9 +126,8 @@ def part_1(lab_map: List[List[str]], guard: Guard) -> int:
             guard.next()
 
     except StopIteration as e:
-        print("exit!")
-    finally:
-        print(f"total number of steps {steps}")
+        pass
+    return steps
 
 
 def read_input(filename: str):
@@ -101,4 +152,6 @@ def read_input(filename: str):
 if __name__ == "__main__":
     filename = sys.argv[1]
     lab_map, guard = read_input(filename)
+    original_guard = deepcopy(guard)
     part_1(lab_map, guard)
+    part_2(lab_map, original_guard)
