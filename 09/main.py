@@ -46,9 +46,12 @@ def parse_disk_structure(disk_structure: str) -> List[Block]:
     return blocks
 
 
-def find_rightmost_block(blocks: List[Block], index: int) -> int:
+def find_rightmost_block(
+    blocks: List[Block], index: int, block_type: BlockType, fitting: bool
+) -> int:
+    min_size = blocks[index].cardinality if fitting else 1
     for i in range(len(blocks) - 1, index, -1):
-        if blocks[i].block_type == BlockType.NUMBER and blocks[i].cardinality > 0:
+        if blocks[i].block_type == block_type and blocks[i].cardinality >= min_size:
             return i
     return -1
 
@@ -61,10 +64,13 @@ def calculate_checksum(blocks: List[Block]) -> int:
             for _ in range(blocks[i].cardinality):
                 checksum += id * blocks[i].id
                 id += 1
+        else:
+            for _ in range(blocks[i].cardinality):
+                id += 1
     return checksum
 
 
-def part_1(blocks: List[Block]) -> int:
+def defrag(blocks: List[Block]) -> int:
     # for each block space -> replace it with one or more blocks, starting from the rightmost ones
     i = 0
     while i < len(blocks):
@@ -74,7 +80,7 @@ def part_1(blocks: List[Block]) -> int:
             #       to space block
             # check if cardinality < of space cardinality
             # restart and add a new number block instead of replacing it
-            rightmost_index = find_rightmost_block(blocks, i)
+            rightmost_index = find_rightmost_block(blocks, i, BlockType.NUMBER, False)
             if rightmost_index == -1:
                 # no more number blocks on the right
                 break
@@ -93,10 +99,37 @@ def part_1(blocks: List[Block]) -> int:
                 blocks[i].cardinality -= number_block.cardinality
                 blocks.insert(i, blocks.pop(rightmost_index))
             i += 1
-
         else:
             i += 1
-    # print(blocks)
+
+    return calculate_checksum(blocks)
+
+
+def defrag_whole_file_only(blocks: List[Block]) -> int:
+    blocks = blocks[::-1]
+    i = 0
+    while i < len(blocks):
+        if blocks[i].block_type == BlockType.NUMBER:
+            rightmost_index = find_rightmost_block(blocks, i, BlockType.SPACE, True)
+            if rightmost_index == -1:
+                i += 1
+            else:
+                space_block = blocks[rightmost_index]
+                if space_block.cardinality > blocks[i].cardinality:
+                    space_block.cardinality -= blocks[i].cardinality
+                    cardinality = blocks[i].cardinality
+                    blocks.insert(rightmost_index, blocks.pop(i))
+                    blocks.insert(i, Block(None, cardinality, BlockType.SPACE))
+                elif space_block.cardinality == blocks[i].cardinality:
+                    space_block.id = blocks[i].id
+                    space_block.block_type = BlockType.NUMBER
+                    blocks[i].block_type = BlockType.SPACE
+                    i += 1
+                else:
+                    raise Exception("find_rightmost_block returned the wrong index")
+        else:
+            i += 1
+    blocks = blocks[::-1]
     return calculate_checksum(blocks)
 
 
@@ -105,4 +138,7 @@ if __name__ == "__main__":
     with open(filename) as f:
         disk_structure = map(int, f.readline().rstrip())
     blocks = parse_disk_structure(disk_structure)
-    print(f"part 1: {part_1(blocks)}")
+    original_blocks = deepcopy(blocks)
+
+    print(f"part 1: {defrag(blocks)}")
+    print(f"part 2: {defrag_whole_file_only(original_blocks)}")
