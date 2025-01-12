@@ -28,6 +28,29 @@ def same_plant_neighbors(i, j, plant, plot_map: List[List[str]]) -> Generator:
             yield (pos[0], pos[1])
 
 
+def same_plant_neighbors_corners(
+    i, j, plant, region_id, plot_map: List[List[str]]
+) -> int:
+    neighbors = []
+    for pos in same_neighbors(i, j, plot_map):
+        if plot_map[pos[0]][pos[1]] == plant or plot_map[pos[0]][pos[1]] == region_id:
+            neighbors.append(pos)
+    print(neighbors)
+    print(f"for {i}-{j} number of common neighbors is {len(neighbors)}")
+    if len(neighbors) >= 3:
+        return 0
+    if len(neighbors) == 1:
+        return 2
+    if len(neighbors) == 2:
+        pos1 = neighbors[0]
+        pos2 = neighbors[1]
+        if pos1[0] != pos2[0] and pos1[1] != pos2[1]:
+            return 1
+        else:
+            return 0
+    return 4
+
+
 def same_region_neighbors(i, j, region_id, plot_map: List[List[str]]) -> Generator:
     for pos in same_neighbors(i, j, plot_map):
         if plot_map[pos[0]][pos[1]] == region_id:
@@ -40,6 +63,7 @@ class Region:
     plant: str
     area: int
     perimeter: int
+    corners: int
 
 
 def read_input():
@@ -56,17 +80,22 @@ def traverse(plot_map):
     for i in range(len(plot_map)):
         for j in range(len(plot_map[0])):
             if not (visited(plot_map, i, j)):
-                regions.append(process_region(plot_map, i, j, len(regions)))
+                regions.append(
+                    process_region_area_perimeter(plot_map, i, j, len(regions))
+                )
     return regions
 
 
-def process_region(plot_map: List[List[str]], i: int, j: int, region_id: int):
+def process_region_area_perimeter(
+    plot_map: List[List[str]], i: int, j: int, region_id: int
+):
     # starting from the element i,j get all the neighbors with same plant
     # stop when there are no neighbors left
     neighbors = [Cell(i=i, j=j)]
     area = 0
     perimeter = 0
     plant = plot_map[i][j]
+    corners = 0
     while neighbors:
         next_cell = neighbors.pop(0)
         if visited(plot_map, next_cell.i, next_cell.j):
@@ -81,7 +110,16 @@ def process_region(plot_map: List[List[str]], i: int, j: int, region_id: int):
                 next_cell.i, next_cell.j, region_id, plot_map
             )
         )
-
+        # corners -> number of corners === number of sides
+        # where corner ->
+        # 1 neighbor same plant -> 2 corners
+        # 2 neighbors same plant on perpendicolar directions -> 1 corner
+        # 2 neighbors same plant on opposite directions -> 0 corner
+        # 3 neighbors + -> 0 corner
+        corners += same_plant_neighbors_corners(
+            next_cell.i, next_cell.j, plant, region_id, plot_map
+        )
+        print(f"for { next_cell.i}-{ next_cell.j} number of corners is {corners}")
         neighbors.extend(
             map(
                 lambda x: Cell(i=x[0], j=x[1]),
@@ -89,15 +127,19 @@ def process_region(plot_map: List[List[str]], i: int, j: int, region_id: int):
             )
         )
 
-    return Region(region_id, plot_map[i][j], area, perimeter)
+    return Region(region_id, plot_map[i][j], area, perimeter, corners)
 
 
 def calculate_price(regions: List[Region]):
     price = 0
+    price_discounted = 0
     for region in regions:
         price += region.area * region.perimeter
-        print(f"{region.plant} {region.area} * {region.perimeter}")
+        price_discounted += region.area * region.corners
+        # print(f"{region.plant} {region.area} * {region.perimeter}")
+        print(f"{region.plant} {region.area} * {region.corners}")
     print(price)
+    print(price_discounted)
     return price
 
 
