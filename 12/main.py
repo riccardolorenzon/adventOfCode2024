@@ -13,30 +13,25 @@ class Cell(NamedTuple):
     j: int
 
 
-def same_plant_neighbors(i, j, plant, plot_map: List[List[str]]) -> Generator:
+def same_neighbors(i, j, plot_map: List[List[str]]) -> Generator:
     directions = [[-1, 0], [1, 0], [0, 1], [0, -1]]
     max_width = len(plot_map[0]) - 1
     max_height = len(plot_map) - 1
     for delta_i, delta_j in directions:
-        if (
-            0 <= i + delta_i <= max_height
-            and 0 <= j + delta_j <= max_width
-            and plot_map[i + delta_i][j + delta_j] == plant
-        ):
+        if 0 <= i + delta_i <= max_height and 0 <= j + delta_j <= max_width:
             yield (i + delta_i, j + delta_j)
+
+
+def same_plant_neighbors(i, j, plant, plot_map: List[List[str]]) -> Generator:
+    for pos in same_neighbors(i, j, plot_map):
+        if plot_map[pos[0]][pos[1]] == plant:
+            yield (pos[0], pos[1])
 
 
 def same_region_neighbors(i, j, region_id, plot_map: List[List[str]]) -> Generator:
-    directions = [[-1, 0], [1, 0], [0, 1], [0, -1]]
-    max_width = len(plot_map[0]) - 1
-    max_height = len(plot_map) - 1
-    for delta_i, delta_j in directions:
-        if (
-            0 <= i + delta_i <= max_height
-            and 0 <= j + delta_j <= max_width
-            and plot_map[i + delta_i][j + delta_j] == region_id
-        ):
-            yield (i + delta_i, j + delta_j)
+    for pos in same_neighbors(i, j, plot_map):
+        if plot_map[pos[0]][pos[1]] == region_id:
+            yield (pos[0], pos[1])
 
 
 @dataclass
