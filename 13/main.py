@@ -31,25 +31,31 @@ class Machine(NamedTuple):
 cache = {}
 
 
-def get_number_of_tokens(machine: Machine, prize_x, prize_y):
-    if f"{machine.id}_{prize_x}_{prize_y}" in cache:
-        return cache[f"{machine.id}_{prize_x}_{prize_y}"]
-    if prize_x < 0 or prize_y < 0:
-        return float("inf")
-    elif prize_x == 0 and prize_y == 0:
+def get_number_of_tokens(machine: Machine):
+    a, b = machine.button_a, machine.button_b
+    mul_b = (a.y * machine.prize_x - machine.prize_y * a.x) / (a.y * b.x - b.y * a.x)
+    if mul_b != int(mul_b):
         return 0
-    else:
-        cache[f"{machine.id}_{prize_x}_{prize_y}"] = min(
-            machine.button_a.tokens
-            + get_number_of_tokens(
-                machine, prize_x - machine.button_a.x, prize_y - machine.button_a.y
-            ),
-            machine.button_b.tokens
-            + get_number_of_tokens(
-                machine, prize_x - machine.button_b.x, prize_y - machine.button_b.y
-            ),
+    mul_b = int(mul_b)
+
+    mul_a = (machine.prize_x - (mul_b * b.x)) / a.x
+    if mul_a != int(mul_a):
+        return 0
+    mul_a = int(mul_a)
+    return BUTTON_A_TOKENS * mul_a + BUTTON_B_TOKENS * int(mul_b)
+
+
+def correct_machines(machines: List[Machine]) -> List[Machine]:
+    return [
+        Machine(
+            id=m.id,
+            button_a=m.button_a,
+            button_b=m.button_b,
+            prize_x=10000000000000 + m.prize_x,
+            prize_y=10000000000000 + m.prize_y,
         )
-        return cache[f"{machine.id}_{prize_x}_{prize_y}"]
+        for m in machines
+    ]
 
 
 def read_input() -> List[Machine]:
@@ -86,7 +92,9 @@ if __name__ == "__main__":
     machines = read_input()
     total = 0
     for machine in machines:
-        res = get_number_of_tokens(machine, machine.prize_x, machine.prize_y)
-        if res != float("inf"):
-            total += res
+        total += get_number_of_tokens(machine)
+    print(total)
+    total = 0
+    for machine in correct_machines(machines):
+        total += get_number_of_tokens(machine)
     print(total)
