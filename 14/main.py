@@ -22,8 +22,8 @@ class Robot:
     y: int
 
     def move(self):
-        self.x = (self.x + self.v_x) % COLUMNS
-        self.y = (self.y + self.v_y) % ROWS
+        self.x = (self.x + self.v_x + COLUMNS) % COLUMNS
+        self.y = (self.y + self.v_y + ROWS) % ROWS
 
 
 def get_safety_factor(robots: List[Robot]) -> int:
@@ -69,22 +69,18 @@ def wait_till_tree(robots: list[Robot]):
     positions = set()
     i = 0
     while True:
-        positions = set()
-        valid = True
         i += 1
+
+        positions = set()
         [robot.move() for robot in robots for _ in range(1)]
+        n_robots = len(robots)
         for robot in robots:
             position = (robot.x, robot.y)
-            if position in positions:
-                display_robots(robots)
-                clear()
-                valid = False
-                break
-            else:
-                positions.add(position)
-        if valid:
+            positions.add(position)
+        if n_robots == len(positions):
             display_robots(robots)
-        print(i)
+            print(i)
+            break
 
 
 def clear():
@@ -105,4 +101,5 @@ if __name__ == "__main__":
     robots = read_input()
     add_step(robots)
     print(get_safety_factor(robots))
+    robots = read_input()
     wait_till_tree(robots)
