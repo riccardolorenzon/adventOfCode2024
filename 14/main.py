@@ -22,8 +22,8 @@ class Robot:
     y: int
 
     def move(self):
-        self.x = (self.x + self.v_x + COLUMNS) % COLUMNS
-        self.y = (self.y + self.v_y + ROWS) % ROWS
+        self.x = (self.x + self.v_x) % COLUMNS
+        self.y = (self.y + self.v_y) % ROWS
 
 
 def get_safety_factor(robots: List[Robot]) -> int:
