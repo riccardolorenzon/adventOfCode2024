@@ -1,6 +1,7 @@
-import enum
 import sys
-from copy import deepcopy
+import enum
+from typing import NamedTuple
+import heapq
 import dataclasses
 
 
@@ -11,127 +12,105 @@ class Direction(enum.Enum):
     UP = "UP"
 
 
-def map_movement(x: int, y: int, direction: Direction) -> tuple[int, int]:
-    match (direction):
-        case Direction.LEFT:
-            return (x - 1, y)
-        case Direction.RIGHT:
-            return (x + 1, y)
-        case Direction.DOWN:
-            return (x, y + 1)
-        case Direction.UP:
-            return (x, y - 1)
-
-
-@dataclasses.dataclass
-class Robot:
+class Position(NamedTuple):
     x: int
     y: int
 
 
-def map_direction(symbol: str) -> Direction:
-    match (symbol):
-        case "<":
-            return Direction.LEFT
-        case "^":
-            return Direction.UP
-        case ">":
-            return Direction.RIGHT
-        case "v":
-            return Direction.DOWN
-    raise Exception(f"Unmapped symbol {symbol}")
+@dataclasses.dataclass(frozen=True, order=True)
+class RPosition:
+    x: int
+    y: int
+    direction: Direction
+    cost: int = 0
+
+    def find_neighbors_positions(self):
+        match (self.direction):
+            case Direction.LEFT:
+                return [
+                    RPosition(self.x, self.y - 1, Direction.UP, 1000),
+                    RPosition(self.x - 1, self.y, Direction.LEFT, 0),
+                    RPosition(self.x, self.y + 1, Direction.DOWN, 1000),
+                ]
+            case Direction.RIGHT:
+                return [
+                    RPosition(self.x, self.y - 1, Direction.UP, 1000),
+                    RPosition(self.x + 1, self.y, Direction.RIGHT, 0),
+                    RPosition(self.x, self.y + 1, Direction.DOWN, 1000),
+                ]
+            case Direction.UP:
+                return [
+                    RPosition(self.x, self.y - 1, Direction.UP, 0),
+                    RPosition(self.x + 1, self.y, Direction.RIGHT, 1000),
+                    RPosition(self.x - 1, self.y, Direction.LEFT, 1000),
+                ]
+            case Direction.DOWN:
+                return [
+                    RPosition(self.x, self.y + 1, Direction.DOWN, 0),
+                    RPosition(self.x + 1, self.y, Direction.RIGHT, 1000),
+                    RPosition(self.x - 1, self.y, Direction.LEFT, 1000),
+                ]
 
 
-def read_input() -> tuple[list[list[str]], list[Direction]]:
-    # returns map, list of steps
+def find_start_end(_map: list[list[str]]) -> list[Position]:
+    pos = [None] * 2
+    for i in range(len(_map)):
+        for j in range(len(_map[0])):
+            if _map[i][j] == "S":
+                pos[0] = Position(j, i)
+            if _map[i][j] == "E":
+                pos[1] = Position(j, i)
+    return pos
 
+
+def read_input():
     _map = []
-    steps = []
     with open(sys.argv[1]) as f:
-        line = f.readline().strip()
-        while line != "":
+        while line := f.readline().strip():
             _map.append(list(line))
-            line = f.readline().strip()
-        for line in f.read().splitlines():
-            for step in line:
-                steps.append(map_direction(step))
-        return _map, steps
+    return _map
 
 
-def find_robot(_map: list[list[str]]) -> tuple[int, int]:
-    for i in range(len(_map)):
-        for j in range(len(_map[0])):
-            if _map[i][j] == "@":
-                return Robot(i, j)
-    raise Exception("Robot not found")
+def find_lowest_path_s_e(_map: list[list[str]]) -> int:
+    pos_s, pos_e = find_start_end(_map)
+    print(f"{pos_s} - {pos_e}")
 
+    # scores will contain, for each i,j, the lowest cost to get to i,j from S
+    scores = [[float("inf") for _ in range(len(_map[0]))] for _ in range(len(_map))]
+    scores[pos_s.y][pos_s.x] = 0
+    # visited contains visited (i,j) of _map
+    visited = set()
 
-def calculate_value(_map: list[list[str]]) -> int:
-    sum_gps_coords = 0
-    for i in range(len(_map)):
-        for j in range(len(_map[0])):
-            if _map[i][j] == "O":
-                sum_gps_coords += (100 * i) + j
-    return sum_gps_coords
+    # pq is a priority queue, we store (distance, RPosition)
+    # first node to store is S
+    pq = [(0, RPosition(pos_s.x, pos_s.y, Direction.RIGHT, 0))]
+    heapq.heapify(pq)
 
+    # while there are items in pq, we extract the one with lowest score, calculate distance from the neighbors, and store the new items in pq
+    while pq:
+        cost, node = heapq.heappop(pq)
 
-def process_steps(_map: list[list[str]], directions: list[Direction]) -> None:
-    robot = find_robot(_map)
-    for direction in directions:
-        # print(f"moving to direction {direction}")
-        move_robot(_map, direction, robot)
-        # for line in _map:
-        #    print(line)
-    return
+        neighbors = node.find_neighbors_positions()
+        for neighbor in neighbors:
+            if neighbor.x not in range(len(_map[0])) or neighbor.y not in range(
+                len(_map)
+            ):
+                continue
 
-
-def next_position(x, y, direction: Direction):
-    next_x, next_y = map_movement(x, y, direction)
-    return (next_x, next_y)
-
-
-def move_robot(_map: list[list[str]], direction: Direction, robot: Robot) -> None:
-    # [@.O.] -> [.@O.] [@O..] -> [.@O.]
-    # [.@00000.] -> [..@00000] -> always one box and the robot to move
-    next_x, next_y = next_position(robot.x, robot.y, direction)
-    # print(f"next position: {next_x} {next_y} from {robot.x} {robot.y}")
-    while next_x in range(0, len(_map[0])) and next_y in range(0, len(_map)):
-        match _map[next_y][next_x]:
-            case ".":
-                _map[robot.y][robot.x] = "."
-                if abs(next_x - robot.x) <= 1 and abs(next_y - robot.y) <= 1:
-                    # only one step, no obastacles involved
-                    _map[next_y][next_x] = "@"
-                else:
-                    _map[next_y][next_x] = "O"
-                    next_x, next_y = next_position(robot.x, robot.y, direction)
-                    _map[next_y][next_x] = "@"
-                robot.x = next_x
-                robot.y = next_y
-                return
-            case "O":
-                next_x, next_y = next_position(next_x, next_y, direction)
-            case "#":
-                break
-
-
-def widen_map(_map: list[list[str]]):
-    _new_map = [[] for _ in range(len(_map))]
-    for i in range(len(_map)):
-        for j in range(len(_map[0])):
-            if _map[i][j] == "O":
-                _new_map[i].extend(["[", "]"])
-            elif _map[i][j] != "@":
-                _new_map[i].extend([_map[i][j], _map[i][j]])
-            else:
-                _new_map[i].extend(["@", "."])
-    for line in _new_map:
-        print("".join(line))
-    return _new_map
+            if neighbor not in visited:
+                visited.add(neighbor)
+                if _map[neighbor.y][neighbor.x] != "#":
+                    tentative_lowest_distance = neighbor.cost + cost + 1
+                    if tentative_lowest_distance < scores[neighbor.y][neighbor.x]:
+                        scores[neighbor.y][neighbor.x] = tentative_lowest_distance
+                        heapq.heappush(pq, (tentative_lowest_distance, neighbor))
+    for line in scores:
+        print(line)
+    return scores[pos_e.y][pos_e.x]
 
 
 if __name__ == "__main__":
-    _map, directions = read_input()
-    process_steps(deepcopy(_map), directions)
-    print(calculate_value(_map))
-    widen_map(_map)
+    _map = read_input()
+    print(find_lowest_path_s_e(_map))
+    for line in _map:
+        print("".join(line))
