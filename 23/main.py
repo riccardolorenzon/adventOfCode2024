@@ -1,13 +1,6 @@
-# the idea is to introduce a new class
-#   LanNode, containing:
-# - list of other nodes it's connected to.
-# for each new connection x - y
-# get node x
-# get node y
-# check if x and y have any node they are both connected to
-# if so -> add to ternaries set
 import sys
 from collections import defaultdict
+import networkx as nx
 
 
 def common_connected_nodes(
@@ -46,6 +39,14 @@ def get_ternary_sets(lan_nodes: dict[str, list]):
     return ternary_sets
 
 
+def find_longest_clique():
+    G = nx.Graph()
+    for node_1, node_2 in read_input():
+        G.add_nodes_from([node_1, node_2])
+        G.add_edge(node_1, node_2)
+    print(",".join(sorted(max(list(nx.find_cliques(G)), key=lambda x: len(x)))))
+
+
 if __name__ == "__main__":
     lan_nodes = map_nodes()
     print(
@@ -57,3 +58,4 @@ if __name__ == "__main__":
             ]
         )
     )
+    find_longest_clique()
